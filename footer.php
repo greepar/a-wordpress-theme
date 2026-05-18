@@ -800,5 +800,56 @@ if (document.readyState === 'loading') {
 }
 </script>
 
+<script>
+(function() {
+  var lightbox = null;
+  var image = null;
+
+  function ensureLightbox() {
+    if (lightbox) return;
+    lightbox = document.createElement('div');
+    lightbox.className = 'cs-lightbox';
+    lightbox.innerHTML = '<button type="button" class="cs-lightbox__close" aria-label="关闭图片预览">&times;</button><img class="cs-lightbox__image" alt="图片预览">';
+    document.body.appendChild(lightbox);
+    image = lightbox.querySelector('.cs-lightbox__image');
+
+    lightbox.addEventListener('click', function(event) {
+      if (event.target === lightbox || event.target.classList.contains('cs-lightbox__close')) {
+        closeLightbox();
+      }
+    });
+  }
+
+  function openLightbox(url, alt) {
+    ensureLightbox();
+    image.src = url;
+    image.alt = alt || '图片预览';
+    lightbox.classList.add('is-active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    if (!lightbox) return;
+    lightbox.classList.remove('is-active');
+    image.src = '';
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('click', function(event) {
+    var trigger = event.target.closest('[data-cs-lightbox="image"]');
+    if (!trigger) return;
+    event.preventDefault();
+    var img = trigger.querySelector('img');
+    openLightbox(trigger.href, img ? img.alt : '图片预览');
+  });
+
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && lightbox && lightbox.classList.contains('is-active')) {
+      closeLightbox();
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

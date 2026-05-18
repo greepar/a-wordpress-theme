@@ -36,11 +36,7 @@ get_header();
             <?php the_content(); ?>
           </div>
 
-          <?php if (has_post_thumbnail()) : ?>
-            <div class="shuoshuo-single-image">
-              <?php the_post_thumbnail('large'); ?>
-            </div>
-          <?php endif; ?>
+          <?php echo chickensoft_blog_render_shuoshuo_images(get_the_ID(), 'large'); ?>
         </div>
       </article>
 

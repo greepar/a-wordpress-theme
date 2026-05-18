@@ -766,6 +766,44 @@ function chickensoft_blog_render_comment_endpoints() {
                     transform: translateY(0);
                     box-shadow: 0 2px 8px -2px rgba(var(--shadow-color), 0.3);
                 }
+                .cs-upload-preview {
+                    flex: 1 1 100%;
+                    display: none;
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    gap: 10px;
+                    order: 8;
+                }
+                .cs-upload-preview.has-images {
+                    display: grid;
+                }
+                .cs-upload-preview-item {
+                    position: relative;
+                    overflow: hidden;
+                    border-radius: 12px;
+                    background: var(--form-accent-light);
+                    border: 1px solid var(--color-fd-border);
+                    aspect-ratio: 1;
+                }
+                .cs-upload-preview-item img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: block;
+                }
+                .cs-upload-preview-remove {
+                    position: absolute;
+                    top: 6px;
+                    right: 6px;
+                    width: 24px;
+                    height: 24px;
+                    border: none;
+                    border-radius: 50%;
+                    background: rgba(0, 0, 0, 0.58);
+                    color: #fff;
+                    cursor: pointer;
+                    font-size: 16px;
+                    line-height: 24px;
+                }
 
                 /* ── Mobile responsive ── */
                 @media (max-width: 520px) {
@@ -1073,6 +1111,14 @@ function chickensoft_blog_render_comment_endpoints() {
                         var textarea = document.getElementById('comment');
                         var submitBtnParent = document.querySelector('.form-submit');
                         if (textarea && submitBtnParent) {
+                            var selectedImageIds = [];
+                            var hiddenImageIds = document.createElement('input');
+                            hiddenImageIds.type = 'hidden';
+                            hiddenImageIds.name = 'cs_comment_image_ids';
+
+                            var previewWrap = document.createElement('div');
+                            previewWrap.className = 'cs-upload-preview';
+
                             var imgUploadBtn = document.createElement('button');
                             imgUploadBtn.type = 'button';
                             imgUploadBtn.id = 'cs-comment-img-upload-btn';
@@ -1102,10 +1148,36 @@ function chickensoft_blog_render_comment_endpoints() {
                             fileInput.accept = 'image/png, image/jpeg, image/gif, image/webp';
                             fileInput.style.display = 'none';
 
+                            textarea.closest('.comment-form-comment').insertAdjacentElement('afterend', previewWrap);
+                            submitBtnParent.parentNode.insertBefore(hiddenImageIds, submitBtnParent);
                             submitBtnParent.insertBefore(imgUploadBtn, submitBtnParent.firstChild);
                             submitBtnParent.insertBefore(fileInput, imgUploadBtn);
 
+                            function syncImageIds() {
+                                hiddenImageIds.value = selectedImageIds.map(function(item) { return item.id; }).join(',');
+                                previewWrap.classList.toggle('has-images', selectedImageIds.length > 0);
+                            }
+
+                            function renderPreview() {
+                                previewWrap.innerHTML = '';
+                                selectedImageIds.forEach(function(item, index) {
+                                    var node = document.createElement('div');
+                                    node.className = 'cs-upload-preview-item';
+                                    node.innerHTML = '<img src="' + item.url + '" alt="评论图片预览"><button type="button" class="cs-upload-preview-remove" aria-label="移除图片">&times;</button>';
+                                    node.querySelector('button').addEventListener('click', function() {
+                                        selectedImageIds.splice(index, 1);
+                                        renderPreview();
+                                        syncImageIds();
+                                    });
+                                    previewWrap.appendChild(node);
+                                });
+                            }
+
                             imgUploadBtn.addEventListener('click', function() {
+                                if (selectedImageIds.length >= 3) {
+                                    alert('评论最多上传 3 张图片');
+                                    return;
+                                }
                                 fileInput.click();
                             });
 
@@ -1125,6 +1197,7 @@ function chickensoft_blog_render_comment_endpoints() {
                                 var formData = new FormData();
                                 formData.append('action', 'chickensoft_upload_comment_image');
                                 formData.append('nonce', '<?php echo wp_create_nonce("cs_comment_image_upload"); ?>');
+                                formData.append('context', 'comment');
                                 formData.append('image', file);
 
                                 fetch(ajaxUrl, {
@@ -1137,10 +1210,9 @@ function chickensoft_blog_render_comment_endpoints() {
                                     imgUploadBtn.disabled = false;
                                     fileInput.value = ''; // Reset
                                     if (data.success) {
-                                        var imgTag = '<img src="' + data.data.url + '" class="comment-uploaded-image" alt="评论图片" />';
-                                        textarea.value = textarea.value + '\n\n' + imgTag + '\n';
-                                        textarea.dispatchEvent(new Event('input'));
-                                        setTimeout(function() { textarea.focus(); textarea.selectionStart = textarea.value.length; }, 50);
+                                        selectedImageIds.push({ id: data.data.id, url: data.data.url });
+                                        renderPreview();
+                                        syncImageIds();
                                     } else {
                                         alert('上传失败: ' + (data.data || '未知错误'));
                                     }
@@ -1328,6 +1400,8 @@ function chickensoft_blog_render_shuoshuo_publish_form() {
             $error = '安全验证失败，请刷新重试。';
         } else {
             $content = sanitize_textarea_field($_POST['shuoshuo_content']);
+            $image_ids = isset($_POST['cs_shuoshuo_image_ids']) ? wp_unslash($_POST['cs_shuoshuo_image_ids']) : '';
+            $image_ids = chickensoft_blog_sanitize_image_ids($image_ids, 9);
             if (empty(trim($content))) {
                 $error = '内容不能为空。';
             } else {
@@ -1348,6 +1422,11 @@ function chickensoft_blog_render_shuoshuo_publish_form() {
                 if (is_wp_error($new_post_id)) {
                     $error = '发布失败: ' . $new_post_id->get_error_message();
                 } else {
+                    if (!empty($image_ids)) {
+                        update_post_meta($new_post_id, '_cs_shuoshuo_image_ids', $image_ids);
+                        set_post_thumbnail($new_post_id, $image_ids[0]);
+                    }
+
                     // Purge cache for the shuoshuo listing page
                     $shuoshuo_page = get_page_by_path('moments');
                     if (!$shuoshuo_page) $shuoshuo_page = get_page_by_path('shuoshuo');
@@ -1471,6 +1550,72 @@ function chickensoft_blog_render_shuoshuo_publish_form() {
                 gap: 12px;
             }
 
+            .publish-upload-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 9px 18px;
+                border: 1px dashed var(--form-accent);
+                border-radius: 999px;
+                background: transparent;
+                color: var(--form-accent);
+                cursor: pointer;
+                font-size: 0.86rem;
+                font-weight: 600;
+                transition: all 0.2s ease;
+                margin-right: auto;
+            }
+
+            .publish-upload-btn:hover {
+                background: var(--form-accent-light);
+            }
+
+            .publish-upload-btn:disabled {
+                cursor: not-allowed;
+                opacity: 0.65;
+            }
+
+            .publish-image-preview {
+                display: none;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .publish-image-preview.has-images {
+                display: grid;
+            }
+
+            .publish-image-preview-item {
+                position: relative;
+                overflow: hidden;
+                aspect-ratio: 1;
+                border-radius: 12px;
+                background: var(--form-accent-light);
+                border: 1px solid var(--color-fd-border);
+            }
+
+            .publish-image-preview-item img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: block;
+            }
+
+            .publish-image-preview-remove {
+                position: absolute;
+                top: 6px;
+                right: 6px;
+                width: 24px;
+                height: 24px;
+                border: none;
+                border-radius: 50%;
+                background: rgba(0, 0, 0, 0.58);
+                color: #fff;
+                cursor: pointer;
+                font-size: 16px;
+                line-height: 24px;
+            }
+
             .publish-btn {
                 padding: 10px 28px;
                 font-size: 0.88rem;
@@ -1574,6 +1719,15 @@ function chickensoft_blog_render_shuoshuo_publish_form() {
                 .publish-shell {
                     padding: 16px;
                 }
+                .publish-actions {
+                    align-items: stretch;
+                    flex-direction: column;
+                }
+                .publish-upload-btn,
+                .publish-btn {
+                    justify-content: center;
+                    width: 100%;
+                }
             }
         </style>
     </head>
@@ -1611,7 +1765,14 @@ function chickensoft_blog_render_shuoshuo_publish_form() {
                     <?php wp_nonce_field('shuoshuo_publish', '_shuoshuo_nonce'); ?>
                     <textarea name="shuoshuo_content" id="shuoshuo-content" placeholder="此刻的想法..." maxlength="2000" required><?php echo isset($_POST['shuoshuo_content']) ? esc_textarea($_POST['shuoshuo_content']) : ''; ?></textarea>
                     <div class="char-count"><span id="char-current">0</span> / 2000</div>
+                    <input type="hidden" name="cs_shuoshuo_image_ids" id="cs-shuoshuo-image-ids" value="">
+                    <input type="file" id="cs-shuoshuo-image-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+                    <div class="publish-image-preview" id="cs-shuoshuo-image-preview"></div>
                     <div class="publish-actions">
+                        <button type="button" class="publish-upload-btn" id="cs-shuoshuo-image-upload-btn">
+                            <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                            添加图片
+                        </button>
                         <button type="submit" class="publish-btn" id="publish-submit">发布说说</button>
                     </div>
                 </form>
@@ -1654,6 +1815,92 @@ function chickensoft_blog_render_shuoshuo_publish_form() {
                 // Submit loading state
                 var form = document.querySelector('.publish-form');
                 if (form) {
+                    var uploadBtn = document.getElementById('cs-shuoshuo-image-upload-btn');
+                    var imageInput = document.getElementById('cs-shuoshuo-image-input');
+                    var imageIdsInput = document.getElementById('cs-shuoshuo-image-ids');
+                    var previewWrap = document.getElementById('cs-shuoshuo-image-preview');
+                    var selectedImages = [];
+
+                    function syncImages() {
+                        if (imageIdsInput) {
+                            imageIdsInput.value = selectedImages.map(function(item) { return item.id; }).join(',');
+                        }
+                        if (previewWrap) {
+                            previewWrap.classList.toggle('has-images', selectedImages.length > 0);
+                        }
+                    }
+
+                    function renderImages() {
+                        if (!previewWrap) return;
+                        previewWrap.innerHTML = '';
+                        selectedImages.forEach(function(item, index) {
+                            var node = document.createElement('div');
+                            node.className = 'publish-image-preview-item';
+                            node.innerHTML = '<img src="' + item.url + '" alt="说说图片预览"><button type="button" class="publish-image-preview-remove" aria-label="移除图片">&times;</button>';
+                            node.querySelector('button').addEventListener('click', function() {
+                                selectedImages.splice(index, 1);
+                                renderImages();
+                                syncImages();
+                            });
+                            previewWrap.appendChild(node);
+                        });
+                    }
+
+                    if (uploadBtn && imageInput) {
+                        uploadBtn.addEventListener('click', function() {
+                            if (selectedImages.length >= 9) {
+                                alert('说说最多上传 9 张图片');
+                                return;
+                            }
+                            imageInput.click();
+                        });
+
+                        imageInput.addEventListener('change', function() {
+                            if (!this.files || !this.files[0]) return;
+                            var file = this.files[0];
+                            if (file.size > 5 * 1024 * 1024) {
+                                alert('图片太大，请选择 5MB 以下的图片');
+                                this.value = '';
+                                return;
+                            }
+
+                            var originalText = uploadBtn.innerHTML;
+                            uploadBtn.innerHTML = '上传中...';
+                            uploadBtn.disabled = true;
+
+                            var formData = new FormData();
+                            formData.append('action', 'chickensoft_upload_comment_image');
+                            formData.append('nonce', '<?php echo wp_create_nonce("cs_comment_image_upload"); ?>');
+                            formData.append('context', 'shuoshuo');
+                            formData.append('image', file);
+
+                            fetch('<?php echo esc_url(admin_url('admin-ajax.php')); ?>', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(function(res) { return res.json(); })
+                            .then(function(data) {
+                                uploadBtn.innerHTML = originalText;
+                                uploadBtn.disabled = false;
+                                imageInput.value = '';
+                                if (data.success) {
+                                    selectedImages.push({ id: data.data.id, url: data.data.url });
+                                    renderImages();
+                                    syncImages();
+                                    sendHeight();
+                                } else {
+                                    alert('上传失败: ' + (data.data || '未知错误'));
+                                }
+                            })
+                            .catch(function() {
+                                uploadBtn.innerHTML = originalText;
+                                uploadBtn.disabled = false;
+                                imageInput.value = '';
+                                alert('网络错误，图片上传失败');
+                            });
+                        });
+                    }
+
                     form.addEventListener('submit', function() {
                         var btn = document.getElementById('publish-submit');
                         if (btn) {
@@ -3634,7 +3881,121 @@ function chickensoft_add_featured_bg_html_class($output) {
 // Note: language_attributes filter is tricky, often it's just 'lang="en"', not containing class.
 // Instead, I'll use a small JS fix if CSS isn't enough, but usually targeting body is sufficient
 
-// --- Upload Comment Image Feature ---
+// --- Comment and Shuoshuo Image Uploads ---
+
+function chickensoft_blog_sanitize_image_ids($value, $limit = 9) {
+    if (is_string($value)) {
+        $value = explode(',', $value);
+    }
+    if (!is_array($value)) {
+        return array();
+    }
+
+    $ids = array();
+    foreach ($value as $id) {
+        $id = absint($id);
+        if (!$id || in_array($id, $ids, true)) {
+            continue;
+        }
+        if (wp_attachment_is_image($id)) {
+            $ids[] = $id;
+        }
+        if (count($ids) >= $limit) {
+            break;
+        }
+    }
+
+    return $ids;
+}
+
+function chickensoft_blog_get_image_upload_context() {
+    $context = isset($_POST['context']) ? sanitize_key(wp_unslash($_POST['context'])) : 'comment';
+    return $context === 'shuoshuo' ? 'shuoshuo' : 'comment';
+}
+
+function chickensoft_comment_image_upload_dir($upload) {
+    $context = chickensoft_blog_get_image_upload_context();
+    $folder = $context === 'shuoshuo' ? 'shuoshuo-images' : 'comment-images';
+    $upload['subdir'] = '/' . $folder . '/' . date('Y/m');
+    $upload['path']   = $upload['basedir'] . $upload['subdir'];
+    $upload['url']    = $upload['baseurl'] . $upload['subdir'];
+    return $upload;
+}
+
+function chickensoft_blog_render_image_gallery(array $image_ids, $class_name = 'cs-image-gallery', $size = 'medium_large') {
+    $image_ids = chickensoft_blog_sanitize_image_ids($image_ids, 9);
+    if (empty($image_ids)) {
+        return '';
+    }
+
+    $count = count($image_ids);
+    $html = '<div class="' . esc_attr($class_name) . ' ' . esc_attr($class_name . '--count-' . min($count, 9)) . '" data-count="' . esc_attr($count) . '">';
+    foreach ($image_ids as $image_id) {
+        $full_url = wp_get_attachment_image_url($image_id, 'full');
+        if (!$full_url) {
+            continue;
+        }
+
+        $html .= '<a class="' . esc_attr($class_name . '__item') . '" href="' . esc_url($full_url) . '" data-cs-lightbox="image">';
+        $html .= wp_get_attachment_image(
+            $image_id,
+            $size,
+            false,
+            array(
+                'class' => $class_name . '__image',
+                'loading' => 'lazy',
+            )
+        );
+        $html .= '</a>';
+    }
+    $html .= '</div>';
+
+    return $html;
+}
+
+function chickensoft_blog_get_shuoshuo_image_ids($post_id = null) {
+    $post_id = $post_id ? absint($post_id) : get_the_ID();
+    if (!$post_id) {
+        return array();
+    }
+
+    $image_ids = get_post_meta($post_id, '_cs_shuoshuo_image_ids', true);
+    $image_ids = chickensoft_blog_sanitize_image_ids($image_ids, 9);
+
+    if (empty($image_ids) && has_post_thumbnail($post_id)) {
+        $image_ids[] = get_post_thumbnail_id($post_id);
+    }
+
+    return $image_ids;
+}
+
+function chickensoft_blog_render_shuoshuo_images($post_id = null, $size = 'medium_large') {
+    return chickensoft_blog_render_image_gallery(chickensoft_blog_get_shuoshuo_image_ids($post_id), 'shuoshuo-image-gallery', $size);
+}
+
+function chickensoft_blog_render_comment_images($content, $comment) {
+    if (!$comment instanceof WP_Comment) {
+        return $content;
+    }
+
+    $image_ids = get_comment_meta($comment->comment_ID, '_cs_comment_image_ids', true);
+    $gallery = chickensoft_blog_render_image_gallery(chickensoft_blog_sanitize_image_ids($image_ids, 3), 'comment-image-gallery', 'medium');
+    if ($gallery === '') {
+        return $content;
+    }
+
+    return $content . $gallery;
+}
+add_filter('comment_text', 'chickensoft_blog_render_comment_images', 9, 2);
+
+function chickensoft_blog_save_comment_images($comment_id) {
+    $image_ids = isset($_POST['cs_comment_image_ids']) ? wp_unslash($_POST['cs_comment_image_ids']) : '';
+    $image_ids = chickensoft_blog_sanitize_image_ids($image_ids, 3);
+    if (!empty($image_ids)) {
+        update_comment_meta($comment_id, '_cs_comment_image_ids', $image_ids);
+    }
+}
+add_action('comment_post', 'chickensoft_blog_save_comment_images', 9);
 
 add_action('wp_ajax_chickensoft_upload_comment_image', 'chickensoft_ajax_upload_comment_image');
 add_action('wp_ajax_nopriv_chickensoft_upload_comment_image', 'chickensoft_ajax_upload_comment_image');
@@ -3647,43 +4008,54 @@ function chickensoft_ajax_upload_comment_image() {
     }
 
     $file = $_FILES['image'];
+    if (!isset($file['size']) || (int) $file['size'] <= 0) {
+        wp_send_json_error('图片文件无效');
+    }
 
-    // Validate size (max 5MB)
-    if ($file['size'] > 5 * 1024 * 1024) {
+    if ((int) $file['size'] > 5 * 1024 * 1024) {
         wp_send_json_error('图片过大，最大允许 5MB');
     }
 
-    // Validate type
     $allowed_types = array('image/jpeg', 'image/png', 'image/gif', 'image/webp');
-    $wp_filetype = wp_check_filetype($file['name'], null);
-    if (!in_array($wp_filetype['type'], $allowed_types)) {
+    $wp_filetype = wp_check_filetype_and_ext($file['tmp_name'], $file['name']);
+    if (empty($wp_filetype['type']) || !in_array($wp_filetype['type'], $allowed_types, true)) {
         wp_send_json_error('仅支持 JPG, PNG, GIF, WEBP 格式');
     }
 
-    require_once(ABSPATH . 'wp-admin/includes/image.php');
-    require_once(ABSPATH . 'wp-admin/includes/file.php');
-    require_once(ABSPATH . 'wp-admin/includes/media.php');
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+    require_once ABSPATH . 'wp-admin/includes/file.php';
 
-    // Filter upload dir to put comment images in a specific folder
     add_filter('upload_dir', 'chickensoft_comment_image_upload_dir');
-
-    $upload_overrides = array('test_form' => false);
-    $movefile = wp_handle_upload($file, $upload_overrides);
-
+    $movefile = wp_handle_upload($file, array('test_form' => false));
     remove_filter('upload_dir', 'chickensoft_comment_image_upload_dir');
 
-    if ($movefile && !isset($movefile['error'])) {
-        wp_send_json_success(array('url' => $movefile['url']));
-    } else {
-        wp_send_json_error($movefile['error']);
+    if (!is_array($movefile) || isset($movefile['error'])) {
+        wp_send_json_error(isset($movefile['error']) ? $movefile['error'] : '上传失败');
     }
-}
 
-function chickensoft_comment_image_upload_dir($upload) {
-    $upload['subdir'] = '/comment-images/' . date('Y/m');
-    $upload['path']   = $upload['basedir'] . $upload['subdir'];
-    $upload['url']    = $upload['baseurl'] . $upload['subdir'];
-    return $upload;
+    $attachment = array(
+        'post_mime_type' => $movefile['type'],
+        'post_title' => sanitize_file_name(pathinfo($movefile['file'], PATHINFO_FILENAME)),
+        'post_content' => '',
+        'post_status' => 'inherit',
+    );
+    $attachment_id = wp_insert_attachment($attachment, $movefile['file']);
+    if (is_wp_error($attachment_id) || !$attachment_id) {
+        wp_send_json_error('附件创建失败');
+    }
+
+    $metadata = wp_generate_attachment_metadata($attachment_id, $movefile['file']);
+    if (!is_wp_error($metadata) && !empty($metadata)) {
+        wp_update_attachment_metadata($attachment_id, $metadata);
+    }
+
+    wp_send_json_success(array(
+        'id' => $attachment_id,
+        'url' => wp_get_attachment_image_url($attachment_id, 'medium') ?: $movefile['url'],
+        'full_url' => wp_get_attachment_image_url($attachment_id, 'full') ?: $movefile['url'],
+        'width' => isset($metadata['width']) ? absint($metadata['width']) : 0,
+        'height' => isset($metadata['height']) ? absint($metadata['height']) : 0,
+    ));
 }
  
 // IF html doesn't have a background. Use :root or html selector in CSS.

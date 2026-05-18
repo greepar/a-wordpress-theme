@@ -62,11 +62,7 @@ $shuoshuo_query = new WP_Query(array(
                 <?php the_content(); ?>
               </div>
 
-              <?php if (has_post_thumbnail()) : ?>
-                <div class="shuoshuo-card-image">
-                  <?php the_post_thumbnail('medium_large'); ?>
-                </div>
-              <?php endif; ?>
+              <?php echo chickensoft_blog_render_shuoshuo_images(get_the_ID(), 'medium_large'); ?>
             </div>
 
             <?php if (comments_open() || get_comments_number()) : ?>
