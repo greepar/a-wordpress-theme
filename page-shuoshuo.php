@@ -34,58 +34,69 @@ $shuoshuo_query = new WP_Query(array(
   <?php if ($shuoshuo_query->have_posts()) : ?>
     <div class="shuoshuo-timeline">
       <?php while ($shuoshuo_query->have_posts()) : $shuoshuo_query->the_post(); ?>
-        <article class="shuoshuo-card" id="shuoshuo-<?php the_ID(); ?>">
-          <div class="shuoshuo-card-header">
-            <div class="shuoshuo-card-avatar">
-              <?php echo get_avatar(get_the_author_meta('ID'), 48); ?>
-            </div>
-            <div class="shuoshuo-card-meta">
-              <span class="shuoshuo-card-author"><?php the_author(); ?></span>
-              <time class="shuoshuo-card-time" datetime="<?php echo esc_attr(get_the_date('c')); ?>">
-                <?php echo esc_html(chickensoft_shuoshuo_relative_time(get_the_time('U'))); ?>
-              </time>
-            </div>
+        <div class="shuoshuo-timeline-item">
+          <div class="shuoshuo-timeline-date" aria-label="<?php echo esc_attr(get_the_date('Y年n月j日 H:i')); ?>">
+            <span class="shuoshuo-timeline-day"><?php echo esc_html(get_the_date('d')); ?></span>
+            <span class="shuoshuo-timeline-month"><?php echo esc_html(get_the_date('M')); ?></span>
           </div>
 
-          <div class="shuoshuo-card-body">
-            <div class="shuoshuo-card-content prose">
-              <?php the_content(); ?>
-            </div>
+          <div class="shuoshuo-timeline-marker" aria-hidden="true">
+            <span></span>
+          </div>
 
-            <?php if (has_post_thumbnail()) : ?>
-              <div class="shuoshuo-card-image">
-                <?php the_post_thumbnail('medium_large'); ?>
+          <article class="shuoshuo-card" id="shuoshuo-<?php the_ID(); ?>">
+            <div class="shuoshuo-card-header">
+              <div class="shuoshuo-card-avatar">
+                <?php echo get_avatar(get_the_author_meta('ID'), 48); ?>
               </div>
-            <?php endif; ?>
-          </div>
+              <div class="shuoshuo-card-meta">
+                <span class="shuoshuo-card-author"><?php the_author(); ?></span>
+                <time class="shuoshuo-card-time" datetime="<?php echo esc_attr(get_the_date('c')); ?>">
+                  <?php echo esc_html(chickensoft_shuoshuo_relative_time(get_the_time('U'))); ?>
+                </time>
+              </div>
+            </div>
 
-          <?php if (comments_open() || get_comments_number()) : ?>
-            <div class="shuoshuo-card-footer">
-              <button type="button" class="shuoshuo-comment-btn" data-post-id="<?php the_ID(); ?>" data-comment-form-url="<?php echo esc_url(trailingslashit(get_permalink()) . 'comment-form/'); ?>" data-comment-url="<?php echo esc_url(trailingslashit(get_permalink()) . 'comment/'); ?>" onclick="openShuoshuoCommentModal(this)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                <span>
-                  <?php
-                  $count = get_comments_number();
-                  echo $count > 0 ? sprintf('%s 条评论', number_format_i18n($count)) : '评论';
-                  ?>
-                </span>
-              </button>
+            <div class="shuoshuo-card-body">
+              <div class="shuoshuo-card-content prose">
+                <?php the_content(); ?>
+              </div>
 
-              <?php if ($count > 0) : ?>
-                <button type="button" class="shuoshuo-toggle-comments-btn" data-post-id="<?php the_ID(); ?>" data-comment-url="<?php echo esc_url(trailingslashit(get_permalink()) . 'comment/'); ?>" onclick="toggleShuoshuoComments(this)">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                  <span>展开评论</span>
-                </button>
+              <?php if (has_post_thumbnail()) : ?>
+                <div class="shuoshuo-card-image">
+                  <?php the_post_thumbnail('medium_large'); ?>
+                </div>
               <?php endif; ?>
             </div>
 
-            <div class="shuoshuo-card-comments" id="shuoshuo-comments-<?php the_ID(); ?>" style="display:none;">
-              <div class="shuoshuo-comments-loading">
-                <p>正在加载评论...</p>
+            <?php if (comments_open() || get_comments_number()) : ?>
+              <div class="shuoshuo-card-footer">
+                <button type="button" class="shuoshuo-comment-btn" data-post-id="<?php the_ID(); ?>" data-comment-form-url="<?php echo esc_url(trailingslashit(get_permalink()) . 'comment-form/'); ?>" data-comment-url="<?php echo esc_url(trailingslashit(get_permalink()) . 'comment/'); ?>" onclick="openShuoshuoCommentModal(this)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                  <span>
+                    <?php
+                    $count = get_comments_number();
+                    echo $count > 0 ? sprintf('%s 条评论', number_format_i18n($count)) : '评论';
+                    ?>
+                  </span>
+                </button>
+
+                <?php if ($count > 0) : ?>
+                  <button type="button" class="shuoshuo-toggle-comments-btn" data-post-id="<?php the_ID(); ?>" data-comment-url="<?php echo esc_url(trailingslashit(get_permalink()) . 'comment/'); ?>" onclick="toggleShuoshuoComments(this)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    <span>展开评论</span>
+                  </button>
+                <?php endif; ?>
               </div>
-            </div>
-          <?php endif; ?>
-        </article>
+
+              <div class="shuoshuo-card-comments" id="shuoshuo-comments-<?php the_ID(); ?>" style="display:none;">
+                <div class="shuoshuo-comments-loading">
+                  <p>正在加载评论...</p>
+                </div>
+              </div>
+            <?php endif; ?>
+          </article>
+        </div>
       <?php endwhile; ?>
     </div>
 

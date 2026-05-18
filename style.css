@@ -2054,30 +2054,126 @@ body.author .post-card {
 }
 
 .shuoshuo-timeline {
+  position: relative;
+  display: grid;
+  gap: 28px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.shuoshuo-timeline::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 112px;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(var(--shadow-color), 0.18) 10%,
+    rgba(var(--shadow-color), 0.18) 90%,
+    transparent
+  );
+}
+
+.shuoshuo-timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 88px 48px minmax(0, 1fr);
+  align-items: start;
+  gap: 0;
+}
+
+.shuoshuo-timeline-date {
+  position: sticky;
+  top: 88px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  max-width: 720px;
+  align-items: flex-end;
+  gap: 2px;
+  padding-top: 8px;
+  color: var(--color-fd-muted-foreground);
+  line-height: 1;
+  text-align: right;
+}
+
+.shuoshuo-timeline-day {
+  color: var(--color-fd-foreground);
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.shuoshuo-timeline-month {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.shuoshuo-timeline-marker {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  padding-top: 18px;
+}
+
+.shuoshuo-timeline-marker span {
+  width: 16px;
+  height: 16px;
+  border: 3px solid var(--color-fd-background);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-fd-primary), var(--logo-text-shimmer));
+  box-shadow:
+    0 0 0 1px rgba(var(--shadow-color), 0.12),
+    0 8px 18px -8px rgba(var(--shadow-color), 0.45);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .shuoshuo-card {
+  position: relative;
   background: var(--color-fd-card);
-  border: 1px solid var(--color-fd-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: 0 10px 18px -14px rgba(var(--shadow-color), 0.35);
-  transition: box-shadow 0.15s ease;
+  border: 1px solid rgba(var(--shadow-color), 0.1);
+  border-radius: 22px;
+  overflow: visible;
+  box-shadow: 0 18px 36px -28px rgba(var(--shadow-color), 0.46);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.shuoshuo-card::before {
+  content: "";
+  position: absolute;
+  top: 22px;
+  left: -8px;
+  width: 16px;
+  height: 16px;
+  border-left: 1px solid rgba(var(--shadow-color), 0.1);
+  border-bottom: 1px solid rgba(var(--shadow-color), 0.1);
+  background: var(--color-fd-card);
+  transform: rotate(45deg);
 }
 
 .shuoshuo-card:hover {
-  box-shadow: 0 14px 24px -12px rgba(var(--shadow-color), 0.4);
+  transform: translateY(-2px);
+  border-color: rgba(var(--shadow-color), 0.18);
+  box-shadow: 0 24px 44px -26px rgba(var(--shadow-color), 0.56);
+}
+
+.shuoshuo-timeline-item:hover .shuoshuo-timeline-marker span {
+  transform: scale(1.18);
+  box-shadow:
+    0 0 0 6px rgba(var(--shadow-color), 0.06),
+    0 10px 22px -8px rgba(var(--shadow-color), 0.5);
 }
 
 .shuoshuo-card-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 18px 0;
+  padding: 20px 22px 0;
 }
 
 .shuoshuo-card-avatar img {
@@ -2106,12 +2202,12 @@ body.author .post-card {
 }
 
 .shuoshuo-card-body {
-  padding: 12px 18px 4px;
+  padding: 14px 22px 4px;
 }
 
 .shuoshuo-card-content.prose {
-  font-size: 0.98rem;
-  line-height: 1.7;
+  font-size: 1rem;
+  line-height: 1.78;
 }
 
 .shuoshuo-card-content.prose p:first-child {
@@ -2123,23 +2219,24 @@ body.author .post-card {
 }
 
 .shuoshuo-card-image {
-  margin-top: 12px;
-  border-radius: 8px;
+  margin-top: 14px;
+  border-radius: 16px;
   overflow: hidden;
+  border: 1px solid rgba(var(--shadow-color), 0.08);
 }
 
 .shuoshuo-card-image img {
   width: 100%;
   height: auto;
   display: block;
-  border-radius: 8px;
+  border-radius: 16px;
 }
 
 .shuoshuo-card-footer {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 18px 14px;
+  padding: 10px 22px 18px;
 }
 
 .shuoshuo-comment-btn,
@@ -2176,7 +2273,8 @@ body.author .post-card {
 
 .shuoshuo-card-comments {
   border-top: 1px solid var(--color-fd-border);
-  padding: 14px 18px;
+  border-radius: 0 0 22px 22px;
+  padding: 14px 22px;
   background: rgba(var(--color-fd-card-rgb), 0.5);
 }
 
@@ -2411,20 +2509,90 @@ body.author .post-card {
 
 /* Shuoshuo Mobile */
 @media (max-width: 600px) {
+  .shuoshuo-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .shuoshuo-timeline {
+    gap: 22px;
+    margin: 0;
+    padding-left: 2px;
+  }
+
+  .shuoshuo-timeline::before {
+    left: 13px;
+  }
+
+  .shuoshuo-timeline-item {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .shuoshuo-timeline-date {
+    position: static;
+    grid-column: 2;
+    grid-row: 1;
+    align-items: flex-start;
+    flex-direction: row;
+    gap: 6px;
+    padding: 0 0 8px;
+    text-align: left;
+  }
+
+  .shuoshuo-timeline-day {
+    font-size: 0.9rem;
+    letter-spacing: 0;
+  }
+
+  .shuoshuo-timeline-month {
+    align-self: center;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+  }
+
+  .shuoshuo-timeline-marker {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    justify-content: flex-start;
+    padding-top: 4px;
+  }
+
+  .shuoshuo-timeline-marker span {
+    width: 14px;
+    height: 14px;
+    border-width: 3px;
+  }
+
+  .shuoshuo-card {
+    grid-column: 2;
+    grid-row: 2;
+    border-radius: 18px;
+  }
+
+  .shuoshuo-card::before {
+    top: 18px;
+    left: -7px;
+    width: 14px;
+    height: 14px;
+  }
+
   .shuoshuo-card-header {
-    padding: 14px 14px 0;
+    padding: 16px 16px 0;
   }
 
   .shuoshuo-card-body {
-    padding: 10px 14px 4px;
+    padding: 12px 16px 4px;
   }
 
   .shuoshuo-card-footer {
-    padding: 8px 14px 12px;
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 10px 16px 14px;
   }
 
   .shuoshuo-card-comments {
-    padding: 12px 14px;
+    border-radius: 0 0 18px 18px;
+    padding: 12px 16px;
   }
 
   .shuoshuo-card-avatar img {
